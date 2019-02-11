@@ -1,0 +1,12 @@
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\bin\Debug\CsharpJson.dll
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\bin\Debug\CsharpJson.pdb
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\obj\Debug\CsharpJson.csprojAssemblyReference.cache
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\obj\Debug\CsharpJson.csproj.CoreCompileInputs.cache
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\obj\Debug\CsharpJson.dll
+C:\Users\Administrator\source\repos\ConsoleApp1\CsharpJson\obj\Debug\CsharpJson.pdb
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\bin\Debug\CsharpJson.dll
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\bin\Debug\CsharpJson.pdb
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\obj\Debug\CsharpJson.csprojAssemblyReference.cache
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\obj\Debug\CsharpJson.csproj.CoreCompileInputs.cache
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\obj\Debug\CsharpJson.dll
+C:\Users\Administrator\source\repos\WindowsFormsApp1\CsharpJson\obj\Debug\CsharpJson.pdb

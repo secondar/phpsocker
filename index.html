@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>
+    <meta http-equiv="content-type" content="text/html;charset=utf-8">
+    <style>
+        p {
+            text-align: left;
+            padding-left: 20px;
+        }
+        a:link { text-decoration: none;color: black}
+        a:active { text-decoration:blink}
+        a:hover { text-decoration:underline;color: red} 
+        a:visited { text-decoration: none;color: green}
+    </style>
+</head>
+<body>
+<div style="width: 800px;height: 600px;margin: 30px auto;text-align: center">
+    <div style="width: 800px;border: 1px solid gray;height: 100%;">
+        <div style="width: 130px;height: 300px;float: left;text-align: left;">
+            <div id="user_list" style="overflow: auto;">
+            </div>
+             <p><span>当前在线:</span><span id="user_num">0</span></p>
+        </div>
+        <div id="msg_list" style="width: 83.5%;border:  1px solid gray; height: 99.9%;;overflow: scroll;float: left;">
+        </div>
+    <br>
+    <textarea id="msg_box" rows="6" cols="50" onkeydown="confirm(event)" style="width: 800px; height: 50px"></textarea><br>
+    <input type="file" id="img_upload" style="display:none;" value="图片" />
+    <input type="button" id="img_button" value="图片" onclick="img_upload.click()" style="width: 200px; height: 50px;float: left;">
+    <input type="button" id='send_button' value="发送" onclick="send()" style="width: 600px; height: 50px">
+</div>
+</body>
+</html>
+
+<script type="text/javascript">
+    // 存储用户名到全局变量,握手成功后发送给服务器
+    var img=Array();
+    var img_upload=document.getElementById("img_upload");
+    img_upload.addEventListener('change',readFile,false);
+    var send_button=document.getElementById("send_button");
+    var user_id='all';
+    var u_name = '';
+    var uname = prompt('请输入用户名',);
+    var uid = '';
+
+    var ws = new WebSocket("ws://192.168.1.85:8080");
+    ws.onopen = function () {
+        var user_info = {'type': 'login', 'name': uname,'uid':uid};
+        sendMsg(user_info);
+    };
+    /**
+     * 分析服务器返回信息
+     *
+     * msg.type : user 普通信息;system 系统信息;handshake 握手信息;login 登陆信息; logout 退出信息;
+     * msg.from : 消息来源
+     * msg.content: 消息内容
+     */
+    ws.onmessage = function (e) {
+        var bool =false;
+        var msg = JSON.parse(e.data);
+        var sender, user_name, user_list_count, change_type;
+        console.log(msg);/////////////////////////////
+        switch (msg.type) {
+            case 'system':
+                switch(msg.from){
+                    case 'system':
+                        sender = '系统消息 : ';
+                        bool=true;
+                    break;
+                    case 'login':
+                        sender = '系统消息 -> 登录状态 -> ';
+                        user_name = msg.name;
+                        change_type = msg.from;
+                        uid = msg.uid;
+                        bool=true;
+                    break;
+                    case 'list':
+                        user_name = msg.name;
+                        user_list_count = msg.user_list_count;
+                        user_list = msg.user_list;
+                        change_type = msg.from;
+                        dealUser(user_name, change_type, user_list_count,user_list);
+                        bool=false;
+                    break;
+                }
+                break;
+            case 'user_msg':
+                switch(msg.msg_type){
+                    case 'img':
+                        switch(msg.img_state){
+                            case 'end':
+                                img[msg.from]+=msg.content;
+                                sender = msg.from + ':';
+                                msg.content='<img src="'+img[msg.from]+'" alt="" style="width: 100%;height: 100%" />';
+                                bool=true;
+                            break;
+                            case 'start':
+                                img[msg.from]='';
+                                img[msg.from]+=msg.content;
+                            break;
+                            default:
+                                img[msg.from]+=msg.content;
+                            break;
+                        }
+                    break;
+                    case 'txt':
+                        if(msg.uid=='all'){
+                            sender = msg.from + ': ';
+                        }else{
+                            if(msg.uid==uid){
+                                sender = msg.from + ' 对你说: ';
+                            }else{
+                                sender =  '你对'+u_name+ '说: ';
+                            }
+                        }
+                        msg.content=msg.content.replace(/</g, "＜").replace(/>/g, "＞");
+                        bool=true;
+                    break;
+                }
+                break;
+        }
+        if(bool){
+            var data = sender + msg.content;
+            listMsg(data);
+        }
+    };
+    ws.onerror = function () {
+        var data = "系统消息 : 连接退出.";
+        listMsg(data);
+    };
+    ws.onclose=function(){
+        var data = "系统消息 : 服务端关闭.";
+        listMsg(data);
+    }
+    /**
+     * 在输入框内按下回车键时发送消息
+     *
+     * @param event
+     *
+     * @returns {boolean}
+     */
+    function confirm(event) {
+        var key_num = event.keyCode;
+        if (13 == key_num) {
+            send();
+        } else {
+            return false;
+        }
+    }
+    /**
+     * 发送并清空消息输入框内的消息
+     */
+    function send() {
+        var msg_box = document.getElementById("msg_box");
+        var content = msg_box.value;
+        var reg = new RegExp("\r\n", "g");
+        content = content.replace(reg, "");
+        var msg = {'content': content.trim(), 'type': 'user_msg','msg_type': 'txt','uid':user_id};
+        if(user_id==uid){
+            alert('不能与自己对话！');
+        }else{
+            sendMsg(msg);
+        }
+        msg_box.value = '';
+        // todo 清除换行符
+    }
+    /**
+     * 将消息内容添加到输出框中,并将滚动条滚动到最下方
+     */
+    function listMsg(data) {
+        var msg_list = document.getElementById("msg_list");
+        var msg = document.createElement("p");
+        msg.innerHTML = data;
+        msg_list.appendChild(msg);
+        msg_list.scrollTop = msg_list.scrollHeight;
+    }
+    /**
+     * 处理用户登陆消息
+     *
+     * @param user_name 用户名
+     * @param type  login/logout
+     * @param name_list 用户列表
+     */
+    function dealUser(user_name, type, name_list_count,user_list) {
+        var user_list_dom = document.getElementById("user_list");
+        var user_num = document.getElementById("user_num");
+        user_list_dom.innerHTML='';
+        var lis = document.createElement("p");
+        lis.innerHTML = "<a id='a_all' href=\"javascript:void(0);\" onclick=\"checkedid('all','所有人')\">所有人</a>";
+        user_list_dom.appendChild(lis);
+        for (var i = 0; i < user_list.length; i++) {
+            lis = document.createElement("p");
+            lis.innerHTML = "<a id='a_"+user_list[i].uid+"' href=\"javascript:void(0);\" onclick=\"checkedid('"+user_list[i].uid+"','"+user_list[i].name+"')\">"+user_list[i].name+"</a>";
+            user_list_dom.appendChild(lis);
+        }
+        user_num.innerHTML = name_list_count;
+        user_list_dom.scrollTop = user_list_dom.scrollHeight;
+        var change = type == 'list' ? '上线' : '下线';
+        var data = '系统消息: ' + user_name + ' 已' + change;
+        listMsg(data);
+    }
+    /**
+     * 将数据转为json并发送
+     * @param msg
+     */
+    function sendMsg(msg) {
+        var data = JSON.stringify(msg);
+        // console.log(data);
+        ws.send(data);
+    }
+    function readFile(){
+            var file=this.files[0];
+            if(!/image\/\w+/.test(file.type)){ 
+                alert("请确保文件为图像类型"); 
+                return false; 
+            }
+            var reader=new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload=function(){
+                if(this.result.length>1399895){
+                    alert('图片不能大于1MB否则不保证质量');
+                    return;
+                }
+                var while_i=0;
+                var len=1024;
+                var img_i=0;
+                var img=Array();
+                while(true){
+                    content=this.result.substr(while_i,len);
+                    if(this.result.length<=while_i){
+                        break;
+                    }
+                    var leni=while_i;
+                    while_i+=len;
+                    if(while_i>=this.result.length){
+                        len=this.result.length;
+                    }
+                    img[img_i]=content;
+                    img_i++;
+                }
+                var time=50;
+                var senlen=0;
+                var reslen=this.result.length;
+                for(var i=0;i<img.length;i++){
+                    (function(i){
+                        setTimeout(function(){
+                            senlen+=img[i].length;
+                            img_button.value='发送中:'+senlen+'/'+reslen;
+                            if(i==0){
+                                msg = {'img_state': 'start', 'type': 'user_msg','msg_type': 'img','content': img[i],'uid':user_id};
+                                sendMsg(msg);
+                            }else if((i+1)==img.length){
+                                msg = {'img_state': 'end', 'type': 'user_msg','msg_type': 'img','content': img[i],'uid':user_id};
+                                sendMsg(msg);
+                                img_button.value='图片';
+                            }else{
+                                msg = {'img_state': 'body','content': img[i], 'type': 'user_msg','msg_type': 'img','uid':user_id};
+                                sendMsg(msg);
+                            }
+                        }, time);
+                    })(i)
+                    time+=10;
+                }
+            }
+    }
+    function checkedid(id,name){
+        console.log(user_id+' - >user_id');
+        console.log(uid+' - >uid');
+        user_id=id;
+        u_name=name;
+    }
+</script>
